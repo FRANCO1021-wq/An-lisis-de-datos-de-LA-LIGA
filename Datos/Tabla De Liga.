@@ -1,59 +1,116 @@
-#Import Necessary Pacakages
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.service import Service 
-import time
+import requests
+from bs4 import BeautifulSoup
 import pandas as pd
+import os
 
-#Data Columns for CSV file
-columns = ['Team POSITION', "TEAM", 'POINTS', 'PLAYED','WIN','DRAW','LOOSE','GOAL SCORED','GOAL ACCUMULATE','GOAL DIFFERENCE']
+# === Funciones de scraping ===
 
-# Function for extract Team details
-def get_team_details(row):
-    details = row.text.split("\n")
-    print(details)
-    contents = {}
-    contents["Team POSITION"]=        details[0]
-    contents['TEAM'] =                details[1]
-    contents['POINTS'] =              details[2]
-    contents['PLAYED'] =              details[3]
-    contents['WIN'] =                 details[4]
-    contents['DRAW'] =                details[5]
-    contents['LOOSE'] =               details[6]
-    contents['GOAL SCORED'] =         details[7]
-    contents['GOAL ACCUMULATE'] =     details[8]
-    contents['GOAL DIFFERENCE'] =     details[9]
+def obtener_tabla_posiciones():
+    url = "https://www.marca.com/futbol/primera-division/clasificacion.html"
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    equipos = [e.text.strip() for e in soup.select(".team-nm")]
+    puntos = [p.text.strip() for p in soup.select(".pts")]
+    pj = [j.text.strip() for j in soup.select(".pj")]
+    pg = [g.text.strip() for g in soup.select(".pg")]
+    pe = [e.text.strip() for e in soup.select(".pe")]
+    pp = [p.text.strip() for p in soup.select(".pp")]
+
+    df = pd.DataFrame({
+        "Pos": range(1, len(equipos) + 1),
+        "Equipo": equipos,
+        "PJ": pj,
+        "PG": pg,
+        "PE": pe,
+        "PP": pp,
+        "Pts": puntos
+    })
+    return df
 
 
-    
-    return contents
+def obtener_goleadores():
+    url = "https://www.marca.com/futbol/primera-division/maximos-goleadores.html"
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, "html.parser")
 
-#Main function to Scrape Data
+    jugadores = [j.text.strip() for j in soup.select(".nombre")]
+    equipos = [e.text.strip() for e in soup.select(".equipo")]
+    goles = [g.text.strip() for g in soup.select(".dato.goles")]
+
+    df = pd.DataFrame({
+        "Pos": range(1, len(jugadores) + 1),
+        "Jugador": jugadores,
+        "Equipo": equipos,
+        "Goles": goles
+    })
+    return df
+
+
+def obtener_asistidores():
+    url = "https://www.marca.com/futbol/primera-division/maximos-asistentes.html"
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, "html.parser")
+
+    jugadores = [j.text.strip() for j in soup.select(".nombre")]
+    equipos = [e.text.strip() for e in soup.select(".equipo")]
+    asistencias = [a.text.strip() for a in soup.select(".dato.asistencias")]
+
+    df = pd.DataFrame({
+        "Pos": range(1, len(jugadores) + 1),
+        "Jugador": jugadores,
+        "Equipo": equipos,
+        "Asistencias": asistencias
+    })
+    return df
+
+
+# === Funciones de menú ===
+
+def mostrar_tabla(df, titulo):
+    print(f"\n{'='*60}")
+    print(f"🏆 {titulo.upper()}")
+    print(f"{'='*60}")
+    print(df.head(10).to_string(index=False))
+    print("\n(Se muestran los primeros 10 registros)")
+
+def guardar_csv(df, nombre_archivo):
+    df.to_csv(nombre_archivo, index=False)
+    print(f"✅ Archivo guardado como: {os.path.abspath(nombre_archivo)}")
+
+# === Programa principal ===
+
 def main():
+    while True:
+        print("\n⚽=== MENÚ LIGA ESPAÑOLA ===⚽")
+        print("1️⃣  Ver tabla de posiciones")
+        print("2️⃣  Ver tabla de goleadores")
+        print("3️⃣  Ver tabla de asistidores")
+        print("4️⃣  Descargar todas las tablas en CSV")
+        print("5️⃣  Salir")
 
-    team_data=[]
+        opcion = input("\n👉 Elige una opción: ")
 
-    driver=webdriver.Edge()
-    url="https://www.laliga.com/en-GB/laliga-easports/standing"
-    driver.get(url)
-    time.sleep(10)
-    table = driver.find_element(By.CLASS_NAME, 'show')
-    rows=table.find_elements(By.CLASS_NAME,"styled__ContainerAccordion-sc-e89col-11")
-    
-    for idx,row in enumerate(rows):
-        team_data.append(get_team_details(row))
+        if opcion == "1":
+            df = obtener_tabla_posiciones()
+            mostrar_tabla(df, "Tabla de posiciones")
+        elif opcion == "2":
+            df = obtener_goleadores()
+            mostrar_tabla(df, "Tabla de goleadores")
+        elif opcion == "3":
+            df = obtener_asistidores()
+            mostrar_tabla(df, "Tabla de asistidores")
+        elif opcion == "4":
+            print("📥 Descargando y guardando archivos...")
+            guardar_csv(obtener_tabla_posiciones(), "tabla_posiciones.csv")
+            guardar_csv(obtener_goleadores(), "tabla_goleadores.csv")
+            guardar_csv(obtener_asistidores(), "tabla_asistidores.csv")
+        elif opcion == "5":
+            print("👋 ¡Hasta luego, bro! ⚽🔥")
+            break
+        else:
+            print("❌ Opción no válida, intenta otra vez.")
 
-               
-    driver.close()
 
-    print(len(team_data))
-    
-    #CSV file creation with data
-    df = pd.DataFrame(data=team_data, columns=columns)
-    df.to_csv("Laliga Team Standings.csv", index=False)
-    return
-
-if __name__ == "__main__":
+if _name_ == "_main_":
     main()
