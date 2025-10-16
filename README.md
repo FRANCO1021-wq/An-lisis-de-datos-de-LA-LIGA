@@ -14,6 +14,4 @@ Nuestro proyecto de análisis de datos de LaLiga tiene como objetivo explorar y 
 3. Generar visualizaciones que faciliten la interpretación de los datos y los hallazgos del análisis.
 ## Requisitos
   Se impletara como programa el lenguaje de programacion de "PHYTON", que es un lenguaje usado para este tipo de tareas por lo fácil que es este y por todas las herramientas que nos puede brindar. Se va a usar principalmente la librería pandas para leer el archivo con los datos de los partidos y poder analizarlos como si fueran tablas, y también matplotlib y seaborn para hacer gráficos y entender mejor la información.
-## Diagrama de flujo
-- Este diagrama de flujo explica la manera la cual el programa funciona
-! [DIAGRAMA DE FLUJO] (diagrama de flujo.png)
+
