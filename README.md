@@ -66,22 +66,16 @@ def obtener_tabla_posiciones():
     return df
 ```
 ## Conclusiones
-### Lecciones aprendidas
 
-- Manejo de scraping con `requests` y `BeautifulSoup`.  
-- Limpieza y análisis de datos usando `pandas`.  
-- Creación de menús interactivos y generación de reportes CSV.  
+- Las visualizaciones facilitan la comprensión de patrones de rendimiento.  
+- El proyecto combina programación, estadística y fútbol para un análisis profesional de LaLiga.  
+- El uso de scraping y pandas permite automatizar la recolección y análisis de datos de manera eficiente.  
+- Los menús interactivos mejoran la experiencia del usuario al explorar la información.  
+- La generación de archivos CSV permite conservar registros históricos y facilitar su uso en otros análisis.  
+- Se identificaron dificultades comunes en scraping, lo que refuerza la importancia de manejo de errores y validación de datos.  
+- El proyecto sirve como base para incorporar futuras mejoras, como visualizaciones avanzadas y modelos predictivos.  
+- La combinación de datos reales con análisis estadístico ofrece insights útiles para equipos, jugadores y aficionados.  
 
-### Dificultades encontradas
-
-- URLs bloqueadas con error 403, solucionadas con headers más robustos.  
-- Formato irregular de algunas tablas HTML, requirió filtrado por clases específicas.  
-
-### Posibles mejoras o ideas futuras
-
-- Agregar visualizaciones interactivas con `matplotlib` y `seaborn`.  
-- Implementar modelos predictivos para anticipar el rendimiento de jugadores y equipos.  
-- Automatizar la actualización de datos diariamente y generar reportes históricos.
 ## Bibliografía / Recursos
 
 - [Python Documentation](https://docs.python.org/3/)  
