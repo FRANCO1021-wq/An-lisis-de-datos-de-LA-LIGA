@@ -3,14 +3,22 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import os
 
-# ============================================================
-# FUNCIONES DE DESCARGA
-# ============================================================
+# ===============================================
+# FUNCIONES DE SCRAPING - TRANSFERMARKT
+# ===============================================
 
 def obtener_tabla_posiciones():
-    """Obtiene la tabla de posiciones de LaLiga 2024/25 desde Transfermarkt."""
+    """Scrapea la tabla de posiciones de LaLiga 2024/25 desde Transfermarkt"""
     url = "https://www.transfermarkt.com/laliga/tabelle/wettbewerb/ES1/saison_id/2024"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/130.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "es-ES,es;q=0.9,en;q=0.8"
+    }
+
     res = requests.get(url, headers=headers)
     if res.status_code != 200:
         print(f"Error al conectar ({res.status_code}).")
@@ -22,31 +30,52 @@ def obtener_tabla_posiciones():
         print("No se encontró la tabla de posiciones.")
         return pd.DataFrame()
 
-    equipos, partidos, puntos = [], [], []
+    filas = tabla.find("tbody").find_all("tr", recursive=False)
+    posiciones, equipos, pj, g, e, p, gf, gc, dg, pts = [], [], [], [], [], [], [], [], [], []
 
-    filas = tabla.find_all("tr", {"class": ["odd", "even"]})
     for fila in filas:
-        columnas = fila.find_all("td")
+        columnas = fila.find_all("td", recursive=False)
         if len(columnas) >= 10:
-            equipos.append(columnas[1].get_text(strip=True))
-            partidos.append(columnas[2].get_text(strip=True))
-            puntos.append(columnas[9].get_text(strip=True))
+            posiciones.append(columnas[0].get_text(strip=True))
+            equipo_tag = columnas[1].find("a")
+            equipos.append(equipo_tag.get_text(strip=True) if equipo_tag else columnas[1].get_text(strip=True))
+            pj.append(columnas[2].get_text(strip=True))
+            g.append(columnas[3].get_text(strip=True))
+            e.append(columnas[4].get_text(strip=True))
+            p.append(columnas[5].get_text(strip=True))
+            gf.append(columnas[6].get_text(strip=True))
+            gc.append(columnas[7].get_text(strip=True))
+            dg.append(columnas[8].get_text(strip=True))
+            pts.append(columnas[9].get_text(strip=True))
 
     df = pd.DataFrame({
-        "Pos": range(1, len(equipos) + 1),
+        "Pos": posiciones,
         "Equipo": equipos,
-        "PJ": partidos,
-        "Puntos": puntos
+        "PJ": pj,
+        "G": g,
+        "E": e,
+        "P": p,
+        "GF": gf,
+        "GC": gc,
+        "DG": dg,
+        "Pts": pts
     })
-
     print("✅ Tabla de posiciones obtenida correctamente.")
     return df
 
 
 def obtener_goleadores():
-    """Obtiene la tabla de goleadores de LaLiga 2024/25 desde Transfermarkt."""
+    """Scrapea los goleadores de LaLiga 2024/25 desde Transfermarkt"""
     url = "https://www.transfermarkt.com/laliga/torschuetzenliste/wettbewerb/ES1/saison_id/2024"
-    headers = {"User-Agent": "Mozilla/5.0"}
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/130.0.0.0 Safari/537.36"
+        ),
+        "Accept-Language": "es-ES,es;q=0.9,en;q=0.8"
+    }
+
     res = requests.get(url, headers=headers)
     if res.status_code != 200:
         print(f"Error al conectar ({res.status_code}).")
@@ -58,16 +87,35 @@ def obtener_goleadores():
         print("No se encontró la tabla de goleadores.")
         return pd.DataFrame()
 
+    filas = tabla.find("tbody").find_all("tr", recursive=False)
     posiciones, jugadores, equipos, goles = [], [], [], []
 
-    filas = tabla.find_all("tr", {"class": ["odd", "even"]})
     for fila in filas:
-        celdas = fila.find_all("td")
-        if len(celdas) >= 6:
-            posiciones.append(celdas[0].get_text(strip=True))
-            jugadores.append(celdas[1].get_text(strip=True))
-            equipos.append(celdas[3].get_text(strip=True))
-            goles.append(celdas[4].get_text(strip=True))
+        columnas = fila.find_all("td", recursive=False)
+        if len(columnas) < 5:
+            continue
+
+        # Posición
+        posiciones.append(columnas[0].get_text(strip=True))
+
+        # Buscar nombre del jugador (primer enlace en la fila con href hacia /spieler/)
+        jugador_tag = fila.find("a", href=lambda x: x and "/spieler/" in x)
+        jugador = jugador_tag.get_text(strip=True) if jugador_tag else "Desconocido"
+        jugadores.append(jugador)
+
+        # Buscar equipo (primer enlace en la fila con href hacia /verein/)
+        equipo_tag = fila.find("a", href=lambda x: x and "/verein/" in x)
+        equipo = equipo_tag.get_text(strip=True) if equipo_tag else "Sin equipo"
+        equipos.append(equipo)
+
+        # Buscar columna de goles (última celda con número)
+        goles_encontrado = None
+        for td in reversed(columnas):
+            texto = td.get_text(strip=True)
+            if texto.isdigit():
+                goles_encontrado = texto
+                break
+        goles.append(goles_encontrado if goles_encontrado else "0")
 
     df = pd.DataFrame({
         "Pos": posiciones,
@@ -80,46 +128,20 @@ def obtener_goleadores():
     return df
 
 
-def obtener_asistidores():
-    """Obtiene la tabla de asistidores de LaLiga 2024/25 desde Transfermarkt."""
-    url = "https://www.transfermarkt.com/laliga/assist/tabelle/wettbewerb/ES1/saison_id/2024"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    res = requests.get(url, headers=headers)
-    if res.status_code != 200:
-        print(f"Error al conectar ({res.status_code}).")
-        return pd.DataFrame()
+# ===============================================
+# UTILIDADES
+# ===============================================
 
-    soup = BeautifulSoup(res.text, "html.parser")
-    tabla = soup.find("table", {"class": "items"})
-    if not tabla:
-        print("No se encontró la tabla de asistidores.")
-        return pd.DataFrame()
+def mostrar_tabla(df, titulo):
+    print("\n" + "=" * 80)
+    print(titulo.center(80))
+    print("=" * 80)
+    if df.empty:
+        print("No hay datos para mostrar.\n")
+    else:
+        print(df.head(10).to_string(index=False))
+        print("\n(Se muestran los primeros 10 registros)\n")
 
-    posiciones, jugadores, equipos, asistencias = [], [], [], []
-
-    filas = tabla.find_all("tr", {"class": ["odd", "even"]})
-    for fila in filas:
-        celdas = fila.find_all("td")
-        if len(celdas) >= 6:
-            posiciones.append(celdas[0].get_text(strip=True))
-            jugadores.append(celdas[1].get_text(strip=True))
-            equipos.append(celdas[3].get_text(strip=True))
-            asistencias.append(celdas[4].get_text(strip=True))
-
-    df = pd.DataFrame({
-        "Pos": posiciones,
-        "Jugador": jugadores,
-        "Equipo": equipos,
-        "Asistencias": asistencias
-    })
-
-    print("✅ Tabla de asistidores obtenida correctamente.")
-    return df
-
-
-# ============================================================
-# FUNCIONES DE UTILIDAD
-# ============================================================
 
 def guardar_csv(df, nombre_archivo):
     if df.empty:
@@ -130,29 +152,19 @@ def guardar_csv(df, nombre_archivo):
     print(f"Archivo guardado como: {ruta}")
 
 
-def mostrar_tabla(df, titulo):
-    print("=" * 60)
-    print(titulo.center(60))
-    print("=" * 60)
-    if df.empty:
-        print("No hay datos para mostrar.\n")
-    else:
-        print(df.head(10).to_string(index=False))
-        print("\n(Se muestran los primeros 10 registros)\n")
-
-
-# ============================================================
+# ===============================================
 # MENÚ PRINCIPAL
-# ============================================================
+# ===============================================
 
 def main():
     while True:
         print("=== MENÚ LIGA ESPAÑOLA (TEMPORADA 2024/25) ===")
         print("1. Ver tabla de posiciones")
         print("2. Ver tabla de goleadores")
-        print("3. Ver tabla de asistidores")
-        print("4. Descargar CSV de posiciones y goleadores")
+        print("3. Ver tabla de asistidores (no disponible)")
+        print("4. Descargar tablas (sin asistidores)")
         print("5. Salir")
+
         opcion = input("\nElige una opción: ")
 
         if opcion == "1":
@@ -164,21 +176,20 @@ def main():
             mostrar_tabla(df, "TABLA DE GOLEADORES")
 
         elif opcion == "3":
-            df = obtener_asistidores()
-            mostrar_tabla(df, "TABLA DE ASISTIDORES")
+            print("\n❌ Tabla de asistidores no disponible actualmente.\n")
 
         elif opcion == "4":
-            print("Descargando y guardando archivos...")
+            print("\nDescargando tablas...")
             guardar_csv(obtener_tabla_posiciones(), "tabla_posiciones.csv")
             guardar_csv(obtener_goleadores(), "tabla_goleadores.csv")
-            print("✅ CSV descargados correctamente (sin asistidores).")
+            print("✅ Tablas descargadas correctamente.\n")
 
         elif opcion == "5":
-            print("Saliendo del programa...")
+            print("\nSaliendo del programa...")
             break
 
         else:
-            print("Opción no válida. Intenta de nuevo.\n")
+            print("\nOpción no válida, intenta de nuevo.\n")
 
 
 if __name__ == "__main__":
